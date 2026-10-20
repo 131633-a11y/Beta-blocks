@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#87bde8">
+<title>Beta Blocks — Voxel Sandbox</title>
+<style>
+  :root { --ui:rgba(18,22,27,.82); --line:rgba(255,255,255,.28); --safe-bottom:env(safe-area-inset-bottom,0px); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:#87bde8;touch-action:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  canvas { display:block;width:100%;height:100%;touch-action:none; }
+  #hud { position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 3px #0008; }
+  #fps { position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;padding:7px 10px;border:1px solid #ffffff38;border-radius:9px;background:rgba(12,18,24,.62);font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;backdrop-filter:blur(8px); }
+  #status { position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;padding:7px 10px;border-radius:9px;background:rgba(12,18,24,.45);font-size:11px;color:#f4f6f8; }
+  #crosshair { position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);opacity:.9; }
+  #crosshair:before,#crosshair:after { content:"";position:absolute;background:white;box-shadow:0 1px 2px #000; }
+  #crosshair:before { width:2px;height:18px;left:8px;top:0; } #crosshair:after { height:2px;width:18px;top:8px;left:0; }
+  #joystick { position:absolute;left:max(18px,env(safe-area-inset-left));bottom:calc(100px + var(--safe-bottom));width:132px;height:132px;border-radius:50%;border:2px solid #ffffff62;background:#111a254d;box-shadow:inset 0 0 24px #0002;pointer-events:auto;touch-action:none; }
+  #joy-knob { position:absolute;left:50%;top:50%;width:54px;height:54px;transform:translate(-50%,-50%);border:2px solid #ffffffb0;border-radius:50%;background:linear-gradient(145deg,#ffffffb8,#bfcbdc70);box-shadow:0 3px 12px #0004; }
+  #actions { position:absolute;right:max(16px,env(safe-area-inset-right));bottom:calc(95px + var(--safe-bottom));display:grid;grid-template-columns:repeat(2,72px);grid-template-rows:62px 62px;gap:10px;pointer-events:auto; }
+  .action { border:1px solid #ffffff75;border-radius:18px;color:#fff;background:linear-gradient(145deg,#344451dc,#111820db);box-shadow:0 4px 12px #0003,inset 0 1px #ffffff2b;font-weight:750;font-size:12px;letter-spacing:.02em;touch-action:none;user-select:none; }
+  .action:active,.action.pressed { background:linear-gradient(145deg,#6b9c65,#2c563d);transform:scale(.96); }
+  #attack { grid-column:1;grid-row:1; } #place { grid-column:2;grid-row:1; } #jump { grid-column:2;grid-row:2; }
+  #hotbar { position:absolute;left:50%;bottom:calc(12px + var(--safe-bottom));transform:translateX(-50%);display:flex;gap:4px;padding:5px;border:1px solid #ffffff5c;border-radius:12px;background:rgba(15,20,25,.75);box-shadow:0 5px 18px #0004;pointer-events:auto;max-width:calc(100vw - 16px); }
+  .slot { position:relative;width:clamp(32px,7.6vw,48px);height:clamp(38px,8.6vw,52px);flex:0 0 auto;border:2px solid #ffffff2c;border-radius:6px;background:#27313bbd;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;touch-action:manipulation; }
+  .slot.selected { border:3px solid #fff;box-shadow:0 0 0 2px #e9c84b,0 0 12px #fff5;transform:translateY(-3px); }
+  .swatch { width:21px;height:21px;border:1px solid #ffffff80;box-shadow:inset -4px -4px #0002,inset 3px 3px #ffffff25;border-radius:2px; }
+  .num { position:absolute;top:1px;left:4px;font-size:9px;opacity:.8; }
+  #hint { position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font-size:10px;color:#fff;text-shadow:0 1px 3px #000;opacity:.8; }
+  #rotate-zone { position:absolute;left:43%;right:0;top:18%;bottom:30%;pointer-events:auto;touch-action:none; }
+  #start { position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(#1c334c77,#0d1825aa);color:white;text-align:center; }
+  #start .panel { max-width:380px;padding:24px;border:1px solid #ffffff45;border-radius:20px;background:rgba(16,24,32,.88);box-shadow:0 15px 45px #0004; }
+  #start h1 { margin:0 0 8px;font-size:28px;letter-spacing:-.04em; } #start p {font-size:13px;line-height:1.55;color:#d7e3ee;margin:8px 0 18px}
+  #play { padding:13px 24px;border:0;border-radius:12px;background:#7fbd6c;color:#102114;font-weight:800;font-size:15px;min-width:160px; }
+  @media (orientation:landscape) { #joystick { width:112px;height:112px;bottom:calc(82px + var(--safe-bottom)); } #joy-knob {width:48px;height:48px} #actions {bottom:calc(78px + var(--safe-bottom));grid-template-columns:68px 68px;grid-template-rows:56px 56px;gap:8px} #hotbar {bottom:calc(8px + var(--safe-bottom));} #rotate-zone {top:8%;bottom:24%;} }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="fps">FPS --</div><div id="status">BETA BUILD · SURVIVAL</div>
+  <div id="crosshair"></div><div id="hint">Drag right side to look</div>
+  <div id="rotate-zone" aria-label="Look around"></div>
+  <div id="joystick"><div id="joy-knob"></div></div>
+  <div id="actions"><button class="action" id="attack">✦ Attack</button><button class="action" id="place">▦ Place</button><button class="action" id="jump">↑ Jump</button></div>
+  <div id="hotbar" aria-label="Block inventory"></div>
+</div>
+<div id="start"><div class="panel"><h1>Beta Blocks</h1><p>A tiny voxel sandbox. Move with the left stick, drag the right side to look, and use Attack / Place to reshape the world. Choose a block from the hotbar.</p><button id="play">Enter World</button></div></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const blockTypes = [
+  {name:'Grass', color:0x65a94b}, {name:'Dirt', color:0x8b5b38}, {name:'Stone', color:0x92989b},
+  {name:'Wood', color:0x9a6a3d}, {name:'Sand', color:0xd9c27d}, {name:'Brick', color:0xa94f42},
+  {name:'Leaves', color:0x3d8045}, {name:'Clay', color:0x9a9dbd}, {name:'Snow', color:0xe8eff2}
+];
+let scene, camera, renderer, clock, worldGroup, raycaster, cubeGeo;
+let world = new Map(), instances = [], blockMeshes = [];
+let selected = 0, started = false, yaw = 0, pitch = 0, velY = 0, onGround = false;
+const player = {x:8, y:5, z:8, radius:.29, height:1.72, eye:1.55};
+const joystick = {x:0,y:0,active:false,id:null,cx:0,cy:0};
+let lookTouch = null, lastLookX = 0, lastLookY = 0;
+let fpsFrames=0, fpsLast=performance.now();
+const key = (x,y,z) => `${x},${y},${z}`;
+const parseKey = k => k.split(',').map(Number);
+const inBounds = (x,y,z) => Math.abs(x)<120 && Math.abs(z)<120 && y>=-4 && y<40;
+function hash(x,z){let n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);}
+function heightAt(x,z){return 2 + Math.floor((Math.sin(x*.45)+Math.cos(z*.38)+Math.sin((x+z)*.22))*0.55 + (hash(x,z)-.5)*.6);}
+function addBlock(x,y,z,type=1){ if(!inBounds(x,y,z))return; world.set(key(x,y,z),type); }
+function removeBlock(x,y,z){world.delete(key(x,y,z));}
+function getBlock(x,y,z){return world.get(key(x,y,z));}
+function generateWorld(){
+  world.clear();
+  for(let x=-8;x<24;x++) for(let z=-8;z<24;z++){
+    const h=heightAt(x,z);
+    for(let y=0;y<=h;y++) addBlock(x,y,z,y===h?0:(y>=h-2?1:2));
+  }
+  // A small tree grove gives the starter plateau a classic sandbox feel.
+  [[-3,-2],[18,3],[4,19]].forEach(([x,z])=>{
+    const h=heightAt(x,z);
+    for(let y=h+1;y<=h+3;y++)addBlock(x,y,z,3);
+    for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=2;dy<=4;dy++){
+      if(Math.abs(dx)+Math.abs(dz)+(dy===4?1:0)<5 && !(dx===0&&dz===0&&dy<4)) addBlock(x+dx,h+dy,z+dz,6);
+    }
+  });
+}
+function makeTexture(base, seed){
+  const c=document.createElement('canvas');c.width=c.height=32;
+  const ctx=c.getContext('2d');ctx.fillStyle='#'+base.toString(16).padStart(6,'0');ctx.fillRect(0,0,32,32);
+  let s=seed*971+13;
+  for(let i=0;i<95;i++){s=(s*16807)%2147483647;const x=s%32;s=(s*16807)%2147483647;const y=s%32;
+    const light=(s%2)?18:-18;ctx.fillStyle=`rgba(${light>0?255:0},${light>0?255:0},${light>0?255:0},${.04+((s%12)/100)})`;ctx.fillRect(x,y,1+(s%3),1+(s%2));}
+  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestMipmapNearestFilter;t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+const materials = blockTypes.map((b,i)=>new THREE.MeshLambertMaterial({map:makeTexture(b.color,i), color:0xffffff}));
+function rebuildInstances(){
+  for(const m of instances){worldGroup.remove(m);m.dispose?.();}
+  instances=[];blockMeshes=[];
+  const buckets=blockTypes.map(()=>[]);
+  for(const [k,t] of world){const [x,y,z]=parseKey(k);buckets[t].push([x,y,z]);}
+  const dummy=new THREE.Object3D();
+  buckets.forEach((blocks,t)=>{
+    if(!blocks.length)return;
+    const mesh=new THREE.InstancedMesh(cubeGeo,materials[t],blocks.length);
+    mesh.userData.type=t;mesh.userData.coords=blocks;
+    blocks.forEach(([x,y,z],i)=>{dummy.position.set(x+.5,y+.5,z+.5);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();mesh.frustumCulled=true;
+    worldGroup.add(mesh);instances.push(mesh);blockMeshes.push(mesh);
+  });
+}
+function init(){
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x87bde8);scene.fog=new THREE.Fog(0x87bde8,28,72);
+  camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,120);
+  renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled=false;document.body.insertBefore(renderer.domElement,document.body.firstChild);
+  scene.add(new THREE.HemisphereLight(0xd7ecff,0x6c604b,2.1));
+  const sun=new THREE.DirectionalLight(0xfff1d5,1.5);sun.position.set(-20,35,15);scene.add(sun);
+  worldGroup=new THREE.Group();scene.add(worldGroup);cubeGeo=new THREE.BoxGeometry(1,1,1);
+  raycaster=new THREE.Raycaster();raycaster.far=6;clock=new THREE.Clock();
+  generateWorld();rebuildInstances();
+  const top=heightAt(8,8);player.x=8.5;player.z=8.5;player.y=top+1.001;
+  buildHotbar();resize();window.addEventListener('resize',resize,{passive:true});window.addEventListener('orientationchange',()=>setTimeout(resize,150),{passive:true});
+  setupControls();renderer.setAnimationLoop(loop);
+}
+function resize(){
+  if(!camera||!renderer)return;camera.aspect=innerWidth/innerHeight;camera.fov=innerWidth>innerHeight?75:78;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+}
+function buildHotbar(){
+  const bar=$('hotbar');bar.innerHTML='';
+  blockTypes.forEach((b,i)=>{const slot=document.createElement('button');slot.className='slot'+(i===selected?' selected':'');slot.setAttribute('aria-label',`${i+1}: ${b.name}`);slot.innerHTML=`<span class="num">${i+1}</span><span class="swatch" style="background:#${b.color.toString(16).padStart(6,'0')}"></span>`;
+    slot.addEventListener('click',()=>{selected=i;[...bar.children].forEach((n,j)=>n.classList.toggle('selected',j===selected));});bar.appendChild(slot);});
+}
+function setupControls(){
+  const joy=$('joystick'), knob=$('joy-knob');
+  function joyStart(e){e.preventDefault();if(joystick.active)return;const t=e.changedTouches?e.changedTouches[0]:e;joystick.active=true;joystick.id=t.identifier??'mouse';const r=joy.getBoundingClientRect();joystick.cx=r.left+r.width/2;joystick.cy=r.top+r.height/2;joyMove(e);}
+  function joyMove(e){if(!joystick.active)return;const list=e.changedTouches?[...e.changedTouches]:[e];const t=list.find(v=>(v.identifier??'mouse')===joystick.id);if(!t)return;e.preventDefault();const dx=t.clientX-joystick.cx,dy=t.clientY-joystick.cy,max=39,len=Math.hypot(dx,dy)||1,m=Math.min(1,max/len);joystick.x=dx/len*m;joystick.y=dy/len*m;knob.style.left=`calc(50% + ${joystick.x*max}px)`;knob.style.top=`calc(50% + ${joystick.y*max}px)`;}
+  function joyEnd(e){const list=e.changedTouches?[...e.changedTouches]:[e];if(list.some(t=>(t.identifier??'mouse')===joystick.id)){joystick.active=false;joystick.id=null;joystick.x=joystick.y=0;knob.style.left='50%';knob.style.top='50%';}}
+  joy.addEventListener('touchstart',joyStart,{passive:false});joy.addEventListener('touchmove',joyMove,{passive:false});joy.addEventListener('touchend',joyEnd,{passive:false});joy.addEventListener('touchcancel',joyEnd,{passive:false});
+  // Mouse fallback for desktop testing.
+  joy.addEventListener('mousedown',e=>{joyStart(e);});window.addEventListener('mousemove',e=>{if(joystick.active&&joystick.id==='mouse')joyMove(e);});window.addEventListener('mouseup',e=>{if(joystick.id==='mouse')joyEnd(e);});
+  const zone=$('rotate-zone');
+  zone.addEventListener('touchstart',e=>{e.preventDefault();if(lookTouch!==null)return;const t=e.changedTouches[0];lookTouch=t.identifier;lastLookX=t.clientX;lastLookY=t.clientY;},{passive:false});
+  zone.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===lookTouch){const dx=t.clientX-lastLookX,dy=t.clientY-lastLookY;lookBy(dx,dy);lastLookX=t.clientX;lastLookY=t.clientY;}},{passive:false});
+  const endLook=e=>{for(const t of e.changedTouches)if(t.identifier===lookTouch)lookTouch=null;};
+  zone.addEventListener('touchend',endLook,{passive:false});zone.addEventListener('touchcancel',endLook,{passive:false});
+  let mouseLook=false,lastMX=0,lastMY=0;
+  zone.addEventListener('mousedown',e=>{mouseLook=true;lastMX=e.clientX;lastMY=e.clientY;});
+  window.addEventListener('mousemove',e=>{if(mouseLook){lookBy(e.clientX-lastMX,e.clientY-lastMY);lastMX=e.clientX;lastMY=e.clientY;}});
+  window.addEventListener('mouseup',()=>mouseLook=false);
+  function lookBy(dx,dy){yaw-=dx*.0042;pitch-=dy*.0036;pitch=Math.max(-1.48,Math.min(1.48,pitch));}
+  function action(id,fn){const b=$(id);let lastFire=0;const fire=e=>{e.preventDefault();lastFire=Date.now();b.classList.add('pressed');fn();setTimeout(()=>b.classList.remove('pressed'),90);};b.addEventListener('touchstart',fire,{passive:false});b.addEventListener('click',e=>{if(Date.now()-lastFire>450){b.classList.add('pressed');fn();setTimeout(()=>b.classList.remove('pressed'),90);}});}
+  action('attack',destroyTarget);action('place',placeTarget);
+  const jb=$('jump');let lastJump=0;jb.addEventListener('touchstart',e=>{e.preventDefault();lastJump=Date.now();jump();},{passive:false});jb.addEventListener('click',()=>{if(Date.now()-lastJump>450)jump();});
+  $('play').addEventListener('click',()=>{$('start').style.display='none';started=true;});
+  document.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+  window.addEventListener('keydown',e=>{if(e.key>='1'&&e.key<='9'){selected=Number(e.key)-1;[...$('hotbar').children].forEach((n,j)=>n.classList.toggle('selected',j===selected));}if(e.code==='Space')jump();});
+}
+function getTarget(){
+  camera.updateMatrixWorld();raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+  const hits=raycaster.intersectObjects(blockMeshes,false);if(!hits.length)return null;
+  const h=hits[0];if(h.distance>5.5||h.instanceId==null)return null;
+  const p=h.object.userData.coords[h.instanceId];const normal=h.face.normal.clone().transformDirection(h.object.matrixWorld);
+  return {p,normal};
+}
+function destroyTarget(){
+  const t=getTarget();if(!t)return;const [x,y,z]=t.p;
+  // Prevent removing the block intersecting the player's feet/body.
+  if(x>=player.x-player.radius&&x<=player.x+player.radius&&z>=player.z-player.radius&&z<=player.z+player.radius&&y<player.y+player.height&&y+1>player.y)return;
+  removeBlock(x,y,z);rebuildInstances();
+}
+function placeTarget(){
+  const t=getTarget();if(!t)return;const [x,y,z]=t.p,n=t.normal;
+  const bx=x+Math.round(n.x),by=y+Math.round(n.y),bz=z+Math.round(n.z);
+  if(getBlock(bx,by,bz)!==undefined||!inBounds(bx,by,bz))return;
+  if(bx>=player.x-player.radius&&bx<=player.x+player.radius&&bz>=player.z-player.radius&&bz<=player.z+player.radius&&by<player.y+player.height&&by+1>player.y)return;
+  addBlock(bx,by,bz,selected);rebuildInstances();
+}
+function jump(){if(onGround){velY=7.1;onGround=false;}}
+function solidAt(x,y,z){return getBlock(Math.floor(x),Math.floor(y),Math.floor(z))!==undefined;}
+function collides(px,py,pz){
+  const r=player.radius, h=player.height;
+  for(let x=Math.floor(px-r);x<=Math.floor(px+r);x++)for(let z=Math.floor(pz-r);z<=Math.floor(pz+r);z++)for(let y=Math.floor(py+.001);y<=Math.floor(py+h-.001);y++)if(solidAt(x,y,z))return true;
+  return false;
+}
+function movePlayer(dx,dy,dz){
+  if(!collides(player.x+dx,player.y,player.z))player.x+=dx;
+  if(!collides(player.x,player.y,player.z+dz))player.z+=dz;
+  if(!collides(player.x,player.y+dy,player.z)){player.y+=dy;onGround=false;}
+  else {if(dy<0)onGround=true;velY=0;}
+  if(player.y < -10){player.x=8.5;player.z=8.5;player.y=heightAt(8,8)+1.01;velY=0;}
+}
+function loop(){
+  const dt=Math.min(clock.getDelta(),.04);
+  const forwardX=-Math.sin(yaw),forwardZ=-Math.cos(yaw),rightX=Math.cos(yaw),rightZ=-Math.sin(yaw);
+  const mx=joystick.x,my=joystick.y;
+  let dx=(rightX*mx+forwardX*(-my))*4.4*dt,dz=(rightZ*mx+forwardZ*(-my))*4.4*dt;
+  const len=Math.hypot(dx,dz);if(len>4.4*dt){dx*=4.4*dt/len;dz*=4.4*dt/len;}
+  movePlayer(dx,0,dz);
+  velY-=19.5*dt;velY=Math.max(velY,-28);movePlayer(0,velY*dt,0);
+  // Tiny step-up logic keeps movement smooth on the gently rolling plateau.
+  if((mx||my)&&onGround){const nx=player.x+dx,nz=player.z+dz;if(collides(nx,player.y,nz)&&!collides(nx,player.y+1,nz)){player.y+=1;onGround=false;velY=0;}}
+  camera.position.set(player.x,player.y+player.eye,player.z);camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;
+  renderer.render(scene,camera);
+  fpsFrames++;const now=performance.now();if(now-fpsLast>=500){$('fps').textContent=`FPS ${Math.round(fpsFrames*1000/(now-fpsLast))}`;fpsFrames=0;fpsLast=now;}
+}
+init();
+})();
+</script>
+</body>
+</html>
